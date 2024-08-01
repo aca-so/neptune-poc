@@ -40,7 +40,7 @@ async def lifespan(_: FastAPI):
     # Startup
     yield
     # Shutdown
-    await neptune_database.close()
+    neptune_database.close()
 
 app = FastAPI(
     lifespan=lifespan,

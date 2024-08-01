@@ -2,9 +2,8 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 import sentry_sdk
-from fastapi import FastAPI, Request, Header
+from fastapi import FastAPI, Request, Header, HTTPException, Depends
 from fastapi.responses import ORJSONResponse
-from gremlin_python.process.graph_traversal import __
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
 from starlette import status
@@ -12,7 +11,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.db.neptune_database import NeptuneDatabase
 from app.config import settings
-
+from app.routes import create_routes
 
 # Sentry
 if settings.sentry_sdk_key is not None:
@@ -75,28 +74,19 @@ async def health():
     return True
 
 
-@app.post('/vertex/count')
-async def count_vertex_by_label(api_key: Annotated[str, Header()]):
+async def verify_api_key(api_key: Annotated[str, Header()] = None):
     if api_key != settings.api_key:
-        return ORJSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content={'message': 'Unauthorized'},
+            detail='Unauthorized',
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    g = neptune_database.get_read_traversal()
-    return g.V().groupCount().by(__.label()).next()
 
-
-@app.post('/edges/count')
-async def count_edge_by_label(api_key: Annotated[str, Header()]):
-    if api_key != settings.api_key:
-        return ORJSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={'message': 'Unauthorized'},
-        )
-
-    g = neptune_database.get_read_traversal()
-    return g.E().groupCount().by(__.label()).next()
+app.include_router(
+    create_routes(neptune_database),
+    dependencies=[Depends(verify_api_key)],
+)
 
 
 if __name__ == "__main__":

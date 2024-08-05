@@ -74,7 +74,7 @@ async def health():
     return True
 
 
-async def verify_api_key(api_key: Annotated[str, Header()] = None):
+def verify_api_key(api_key: Annotated[str, Header()] = None):
     if api_key != settings.api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -91,4 +91,4 @@ app.include_router(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host='0.0.0.0', loop='asyncio')
+    uvicorn.run(app, host='0.0.0.0', port=8000, loop='asyncio')
